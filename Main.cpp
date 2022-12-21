@@ -1,7 +1,6 @@
 #include <iostream>
-#include <iomanip>
 #include <cinttypes>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -11,15 +10,15 @@
 
 #include "Node.cpp"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
-std::atomic<bool> exit_flag;    // Атомик, фиксирующий нахождение значения
-std::string detected_path;      // Найденный путь
+std::atomic<bool> exit_flag;    // РђС‚РѕРјРёРє, С„РёРєСЃРёСЂСѓСЋС‰РёР№ РЅР°С…РѕР¶РґРµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ
+std::string detected_path;      // РќР°Р№РґРµРЅРЅС‹Р№ РїСѓС‚СЊ
 
 namespace thread_func {
-    void findFileByName(Node* root, std::string name) {
-        // Если нашли среди дочерних файлов нужное название - выводим, 
-        // предусмотрен одновременный вход в условие разными потоками, если есть совпадающие названия файлов
+    void findFileByName(Node *root, std::string name) {
+        // Р•СЃР»Рё РЅР°С€Р»Рё СЃСЂРµРґРё РґРѕС‡РµСЂРЅРёС… С„Р°Р№Р»РѕРІ РЅСѓР¶РЅРѕРµ РЅР°Р·РІР°РЅРёРµ - РІС‹РІРѕРґРёРј, 
+        // РїСЂРµРґСѓСЃРјРѕС‚СЂРµРЅ РѕРґРЅРѕРІСЂРµРјРµРЅРЅС‹Р№ РІС…РѕРґ РІ СѓСЃР»РѕРІРёРµ СЂР°Р·РЅС‹РјРё РїРѕС‚РѕРєР°РјРё, РµСЃР»Рё РµСЃС‚СЊ СЃРѕРІРїР°РґР°СЋС‰РёРµ РЅР°Р·РІР°РЅРёСЏ С„Р°Р№Р»РѕРІ
         if (strcmp(name.c_str(), root->path.filename().string().c_str()) == 0 && !root->is_dir) {
             if (exit_flag.load())
                 return;
@@ -29,9 +28,9 @@ namespace thread_func {
 
 
 
-        // Если директория, то создает потоки для всех ее дочерних элементов, потоки сразу отделяем от основного
+        // Р•СЃР»Рё РґРёСЂРµРєС‚РѕСЂРёСЏ, С‚Рѕ СЃРѕР·РґР°РµС‚ РїРѕС‚РѕРєРё РґР»СЏ РІСЃРµС… РµРµ РґРѕС‡РµСЂРЅРёС… СЌР»РµРјРµРЅС‚РѕРІ, РїРѕС‚РѕРєРё СЃСЂР°Р·Сѓ РѕС‚РґРµР»СЏРµРј РѕС‚ РѕСЃРЅРѕРІРЅРѕРіРѕ
         if (root->is_dir) {
-            for (Node* object : root->children) {
+            for (Node* object: root->children) {
                 if (exit_flag.load())
                     return;
                 std::thread([object, name]() { thread_func::findFileByName(object, name); }).detach();
@@ -40,8 +39,8 @@ namespace thread_func {
     }
 }
 
-// Аналогичная(стартовая) функция, формирующая потоки
-void findFileByName(Node* root, const std::string& name) {
+// РђРЅР°Р»РѕРіРёС‡РЅР°СЏ(СЃС‚Р°СЂС‚РѕРІР°СЏ) С„СѓРЅРєС†РёСЏ, С„РѕСЂРјРёСЂСѓСЋС‰Р°СЏ РїРѕС‚РѕРєРё
+void findFileByName(Node *root, const std::string &name) {
 
     if (strcmp(name.c_str(), root->path.filename().string().c_str()) == 0 && !root->is_dir) {
         if (exit_flag.load())
@@ -53,21 +52,21 @@ void findFileByName(Node* root, const std::string& name) {
 
 
     if (root->is_dir)
-        for (Node* object : root->children) {
+        for (Node* object: root->children) {
             if (exit_flag.load())
                 return;
             std::thread([object, name]() { thread_func::findFileByName(object, name); }).detach();
         }
 }
 
-// Вывод содержимого дерева
-void printDirectoryTree(Node* object) {
+// Р’С‹РІРѕРґ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ РґРµСЂРµРІР°
+void printDirectoryTree(Node *object) {
     if (!object)
         return;
 
     if (object->is_dir) {
         std::cout << std::setw(object->depth * 3) << "" << object->name << " - DIR\n";
-        for (const auto& child : object->children) {
+        for (const auto &child: object->children) {
             printDirectoryTree(child);
         }
         return;
@@ -81,16 +80,16 @@ void printDirectoryTree(Node* object) {
     std::cout << std::setw(object->depth * 3) << "" << object->name << " - FILE(" << object->size << " bytes)\n";
 }
 
-// Заполнение структуры дерева с использлованием путей через std::filesystem
-void getDirectoryTree(Node* root, const fs::path& pathToScan) {
-    for (const auto& entry : fs::directory_iterator(pathToScan)) {
+// Р—Р°РїРѕР»РЅРµРЅРёРµ СЃС‚СЂСѓРєС‚СѓСЂС‹ РґРµСЂРµРІР° СЃ РёСЃРїРѕР»СЊР·Р»РѕРІР°РЅРёРµРј РїСѓС‚РµР№ С‡РµСЂРµР· std::filesystem
+void getDirectoryTree(Node *root, const fs::path &pathToScan) {
+    for (const auto &entry: fs::directory_iterator(pathToScan)) {
         auto filename = entry.path().filename().string();
 
         root->name = pathToScan.filename().string();
         root->path = pathToScan;
         root->is_dir = true;
 
-        Node* new_node = new Node();
+        Node *new_node = new Node();
         new_node->name = filename;
         new_node->depth = root->depth + 1;
         new_node->path = entry.path();
@@ -100,56 +99,54 @@ void getDirectoryTree(Node* root, const fs::path& pathToScan) {
         if (entry.is_directory()) {
             new_node->is_dir = true;
             getDirectoryTree(new_node, entry);
-        }
-        else if (entry.is_regular_file()) {
+        } else if (entry.is_regular_file()) {
             new_node->size = entry.file_size();
-        }
-        else {
+        } else {
             new_node->is_other = true;
         }
     }
 }
 
-// Рекурсивная очистка дерева
-void clearTree(Node* root) {
+// Р РµРєСѓСЂСЃРёРІРЅР°СЏ РѕС‡РёСЃС‚РєР° РґРµСЂРµРІР°
+void clearTree(Node *root) {
     if (!root->is_dir) {
         delete root;
         return;
     }
 
-    for (auto& ptr : root->children)
+    for (auto &ptr: root->children)
         clearTree(ptr);
 
     delete root;
 }
 
 int main() {
-    // Инициализируем дерево согласно указаному пути в системе
-    // Выбросит ошибку, если путь не существует
-    Node* baseRoot = new Node();
-
-    // Заполнение дерева
+    // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РґРµСЂРµРІРѕ СЃРѕРіР»Р°СЃРЅРѕ СѓРєР°Р·Р°РЅРѕРјСѓ РїСѓС‚Рё РІ СЃРёСЃС‚РµРјРµ
+    // Р’С‹Р±СЂРѕСЃРёС‚ РѕС€РёР±РєСѓ, РµСЃР»Рё РїСѓС‚СЊ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+    Node *baseRoot = new Node();
+    
+    // Р—Р°РїРѕР»РЅРµРЅРёРµ РґРµСЂРµРІР°
     getDirectoryTree(baseRoot, fs::path("/home/kondrativvo/DocSup/TestDir"));
 
-    // Вывод дерева
+    // Р’С‹РІРѕРґ РґРµСЂРµРІР°
     printDirectoryTree(baseRoot);
 
-    // Устанавливаем стартовые значения для флагов и итогового пути
+    // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃС‚Р°СЂС‚РѕРІС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ С„Р»Р°РіРѕРІ Рё РёС‚РѕРіРѕРІРѕРіРѕ РїСѓС‚Рё
     exit_flag.store(false);
     detected_path = "";
-
-    // Начинаем поиск по названию
+    
+    // РќР°С‡РёРЅР°РµРј РїРѕРёСЃРє РїРѕ РЅР°Р·РІР°РЅРёСЋ
     findFileByName(baseRoot, "1.txt");
 
-    // Пока не активирован флаг, усыпляем текущий поток
+    // РџРѕРєР° РЅРµ Р°РєС‚РёРІРёСЂРѕРІР°РЅ С„Р»Р°Рі, СѓСЃС‹РїР»СЏРµРј С‚РµРєСѓС‰РёР№ РїРѕС‚РѕРє
     while (!exit_flag.load()) {
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
-    // Выводим найденный путь
+    // Р’С‹РІРѕРґРёРј РЅР°Р№РґРµРЅРЅС‹Р№ РїСѓС‚СЊ
     std::cout << "Path to file: " << detected_path << std::endl;
 
-    // Очищаем дерево
+    // РћС‡РёС‰Р°РµРј РґРµСЂРµРІРѕ
     clearTree(baseRoot);
     return 0;
 }
